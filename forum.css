@@ -336,6 +336,36 @@ main {
   outline: 0;
 }
 
+.boot-panel {
+  min-height: 220px;
+  padding: 34px 28px;
+  border: 1px solid var(--forum-line);
+  background: #f8fafb;
+  color: #53606a;
+}
+
+.boot-panel h2 {
+  margin: 0 0 12px;
+  color: #215f8f;
+  font-size: 18px;
+}
+
+.boot-panel p {
+  margin: 0 0 18px;
+  line-height: 1.8;
+}
+
+.boot-panel .boot-warning {
+  margin-top: 18px;
+  color: #9a3e35;
+}
+
+.boot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .sidebar {
   min-width: 0;
   color: #53606a;

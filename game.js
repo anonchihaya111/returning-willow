@@ -1,6 +1,10 @@
 (() => {
   "use strict";
   const STORY = window.WILLOW_STORY;
+  if (!STORY?.clues || !STORY?.pages || !STORY?.endings) {
+    console.error("Willow story data did not load.");
+    return;
+  }
   const KEY = "huanyuanliu.enhanced.v1";
   const VIEWS = ["home", "forum", "topic", "phone", "diary", "gazette", "codex", "ledger", "contract", "drawer", "keeper", "evidence", "profile"];
   const CLUES = Object.keys(STORY.clues);
@@ -82,6 +86,7 @@
     { category: "社区事务", title: "关于规范还愿登记的几点说明", author: "站务组", replies: "33" },
   ];
   const $ = (selector, root = document) => root.querySelector(selector);
+  const owns = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
   const icon = (name) => `<i data-lucide="${name}"></i>`;
   const escape = (value) =>
     String(value).replace(
@@ -132,9 +137,9 @@
     const data = JSON.parse(localStorage.getItem(KEY));
     if (data && data.version === 1) {
       state.view = VIEWS.includes(data.view) ? data.view : "home";
-      state.page = Object.hasOwn(STORY.pages, data.page) ? data.page : "first";
+      state.page = owns(STORY.pages, data.page) ? data.page : "first";
       state.category = typeof data.category === "string" ? data.category : "";
-      state.topic = Object.hasOwn(TOPICS, data.topic) ? data.topic : "";
+      state.topic = owns(TOPICS, data.topic) ? data.topic : "";
       state.phoneTab = ["chat", "photo", "files"].includes(data.phoneTab) ? data.phoneTab : "chat";
       ["unlocked", "transcript", "showHidden", "diaryRestored", "compare", "codexRevealed", "unfolded", "drawerOpen", "keeperUnfold", "reduced"].forEach((key) => {
         if (typeof data[key] === "boolean") state[key] = data[key];
@@ -201,14 +206,22 @@
     icons();
   }
   function render(scroll = false) {
-    updateChrome();
-    if (state.ending && state.view !== "profile") main.innerHTML = renderEnding();
-    else main.innerHTML = { home: renderHome, forum: renderForum, topic: renderTopic, phone: renderPhone, diary: renderDiary, gazette: renderGazette, codex: renderCodex, ledger: renderLedger, contract: renderContract, drawer: renderDrawer, keeper: renderKeeper, evidence: renderEvidence, profile: renderProfile }[state.view]();
-    icons();
-    if (scroll) {
-      const top = main.getBoundingClientRect().top + window.scrollY - 18;
-      window.scrollTo({ top, behavior: "instant" });
-      main.focus({ preventScroll: true });
+    try {
+      updateChrome();
+      const renderer = { home: renderHome, forum: renderForum, topic: renderTopic, phone: renderPhone, diary: renderDiary, gazette: renderGazette, codex: renderCodex, ledger: renderLedger, contract: renderContract, drawer: renderDrawer, keeper: renderKeeper, evidence: renderEvidence, profile: renderProfile }[state.view];
+      if (state.ending && state.view !== "profile") main.innerHTML = renderEnding();
+      else main.innerHTML = (renderer || renderHome)();
+      main.dataset.booted = "true";
+      icons();
+      if (scroll) {
+        const top = main.getBoundingClientRect().top + window.scrollY - 18;
+        window.scrollTo({ top, behavior: "auto" });
+        main.focus({ preventScroll: true });
+      }
+    } catch (error) {
+      console.error("Willow page render failed.", error);
+      main.dataset.booted = "error";
+      main.innerHTML = `<section class="boot-panel boot-error"><h2>论坛内容未能载入</h2><p>浏览记录可能来自旧版本。你可以重新加载，或保留已收集的线索并返回论坛首页。</p><div class="boot-actions"><button class="command secondary" data-action="reload-page">重新加载</button><button class="command" data-action="recover-home">返回论坛首页</button></div></section>`;
     }
   }
   function navigate(view) {
@@ -470,6 +483,9 @@
       case "profile": state.view = "profile"; state.category = ""; state.topic = ""; save(); render(true); break;
       case "close-modal": closeModal(); break;
       case "dismiss-notification": $("#notification").hidden = true; break;
+      case "reload-page": window.location.reload(); break;
+      case "recover-home":
+        state.view = "home"; state.category = ""; state.topic = ""; state.ending = null; save(); render(); break;
       case "page": state.page = target.dataset.page; searchMessage = ""; save(); render(); break;
       case "keep-wish":
         if (has("wish")) navigate("phone");

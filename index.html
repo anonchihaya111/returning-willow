@@ -7,11 +7,11 @@
   <meta name="description" content="柳巷论坛，青河人的网上家园。">
   <title>柳巷论坛 - 青河人的网上家园</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="forum.css">
-  <script defer src="vendor/lucide.min.js"></script>
-  <script defer src="story.js"></script>
-  <script defer src="game.js"></script>
+  <link rel="stylesheet" href="style.css?v=20260916-2">
+  <link rel="stylesheet" href="forum.css?v=20260916-2">
+  <script defer src="vendor/lucide.min.js?v=20260916-2"></script>
+  <script defer src="story.js?v=20260916-2"></script>
+  <script defer src="game.js?v=20260916-2"></script>
 </head>
 <body>
   <div class="utility-bar">
@@ -25,11 +25,18 @@
       <button class="site-brand" data-action="home" aria-label="柳巷论坛首页"><span class="brand-mark">柳</span><span><h1>柳巷论坛</h1><small>bbs.lxqh.cn</small></span></button>
       <button class="local-banner" data-action="open-topic" data-topic="photos"><img src="assets/banner-willow.jpg" alt="青河老柳祠与旧城风景"><span><strong>青河老街影像征集</strong><small>找回那些留在巷子里的旧日子</small></span></button>
     </header>
-    <div class="site-status"><span id="story-date">2026 年 9 月 15 日</span><span>主题：<b>12,486</b>　帖子：<b>186,392</b>　会员：<b>9,417</b>　<span id="online-count">在线：16 人</span></span></div>
+    <div class="site-status"><span id="story-date">2026 年 9 月 14 日</span><span>主题：<b>12,486</b>　帖子：<b>186,392</b>　会员：<b>9,417</b>　<span id="online-count">在线：17 人</span></span></div>
     <nav class="board-nav" aria-label="论坛版块"><button data-action="home" class="active">论坛首页</button><button data-action="category" data-category="青河杂谈">青河杂谈</button><button data-action="category" data-category="乡土民俗">乡土民俗</button><button data-action="category" data-category="生活互助">生活互助</button><button data-action="category" data-category="旧城相册">旧城相册</button><button data-action="category" data-category="社区事务">社区事务</button></nav>
     <div class="global-search"><form id="site-search-form"><label for="site-search">站内搜索</label><input id="site-search" type="search" placeholder="帖子标题、作者或关键词" maxlength="60" autocomplete="off"><button type="submit">搜索</button></form><span>热帖：<button data-action="open-topic" data-topic="wish">愿望柳</button><button data-action="open-topic" data-topic="photos">青河旧影</button><button data-action="open-topic" data-topic="bus">公交改线</button></span></div>
     <div class="content-grid">
-      <main id="main" tabindex="-1"></main>
+      <main id="main" tabindex="-1">
+        <section class="boot-panel">
+          <h2>论坛内容载入中</h2>
+          <p>正在恢复主题与浏览记录。若这里长时间没有变化，请重新加载页面。</p>
+          <button class="command secondary" type="button" onclick="location.reload()">重新加载</button>
+          <noscript><p class="boot-warning">浏览器已停用 JavaScript，请启用后再刷新页面。</p></noscript>
+        </section>
+      </main>
       <aside class="sidebar">
         <section><div class="side-title">版块排行</div><ol class="board-ranking"><li><button data-action="category" data-category="青河杂谈">青河杂谈</button><span>5,806</span></li><li><button data-action="category" data-category="生活互助">生活互助</button><span>3,512</span></li><li><button data-action="category" data-category="乡土民俗">乡土民俗</button><span>1,904</span></li><li><button data-action="category" data-category="旧城相册">旧城相册</button><span>986</span></li></ol></section>
         <section class="local-links"><div class="side-title">站内服务</div><button data-action="open-resource" data-resource="phone">失物招领</button><button data-action="open-resource" data-resource="gazette">青河县志数字馆</button><button data-action="open-resource" data-resource="codex">古籍异文校勘</button><button data-action="open-topic" data-topic="photos">旧照片征集</button><button data-action="open-topic" data-topic="rules">社区版规</button><button data-action="open-resource" data-resource="ledger">民俗愿事登记</button><button data-action="open-resource" data-resource="evidence">离线存证清单</button></section>
