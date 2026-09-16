@@ -303,6 +303,29 @@ input:focus {
   border-radius: 50%;
   background: #d79b70;
 }
+.notice-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  border-bottom: 1px solid var(--line);
+  color: #74806b;
+  font-size: 11px;
+}
+.notice-line > svg {
+  width: 14px;
+  flex-shrink: 0;
+}
+.notice-line p {
+  margin: 0;
+  flex: 1;
+  line-height: 1.6;
+  padding: 8px 0;
+}
+.notice-line > span {
+  font-size: 10px;
+  color: #969a90;
+}
 .content-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 226px;
@@ -927,9 +950,6 @@ dd {
 .lock-screen {
   padding: 47px 30px;
   text-align: center;
-  background:
-    linear-gradient(rgba(231, 237, 238, 0.86), rgba(231, 237, 238, 0.86)),
-    url("assets/banner-willow.jpg") center / cover no-repeat;
 }
 .lock-time {
   font:
@@ -1620,31 +1640,6 @@ dd {
   gap: 12px;
   flex-wrap: wrap;
 }
-.scene-photo {
-  margin: 0 0 18px;
-  max-width: 520px;
-}
-.scene-photo img,
-.ending-photo img {
-  display: block;
-  width: 100%;
-  border: 1px solid #c9d3da;
-  padding: 4px;
-  background: #fff;
-  box-shadow: 0 1px 2px #40505c22;
-  filter: saturate(.88) contrast(.97);
-}
-.scene-photo figcaption,
-.ending-photo figcaption {
-  margin-top: 6px;
-  font-size: 10px;
-  color: #8d979d;
-  letter-spacing: .05em;
-}
-.ending-photo {
-  margin: 6px auto 4px;
-  max-width: 400px;
-}
 .ending-note {
   font-size: 10px;
   color: #9fa58f;
@@ -2080,6 +2075,13 @@ body.reduced-motion *:after {
     position: absolute;
     top: 11px;
     right: 24%;
+  }
+  .notice-line {
+    font-size: 9px;
+    gap: 7px;
+  }
+  .notice-line > span {
+    display: none;
   }
   .content-grid {
     display: block;

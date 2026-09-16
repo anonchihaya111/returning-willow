@@ -1,12 +1,8 @@
 (() => {
   "use strict";
   const STORY = window.WILLOW_STORY;
-  if (!STORY?.clues || !STORY?.pages || !STORY?.endings) {
-    console.error("Willow story data did not load.");
-    return;
-  }
   const KEY = "huanyuanliu.enhanced.v1";
-  const VIEWS = ["home", "forum", "topic", "phone", "diary", "gazette", "codex", "ledger", "contract", "drawer", "keeper", "evidence", "profile"];
+  const VIEWS = ["home", "forum", "topic", "lostfound", "phone", "diary", "gazette", "codex", "ledger", "contract", "drawer", "keeper", "evidence", "profile"];
   const CLUES = Object.keys(STORY.clues);
   const TOPICS = {
     bus: {
@@ -86,7 +82,6 @@
     { category: "社区事务", title: "关于规范还愿登记的几点说明", author: "站务组", replies: "33" },
   ];
   const $ = (selector, root = document) => root.querySelector(selector);
-  const owns = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
   const icon = (name) => `<i data-lucide="${name}"></i>`;
   const escape = (value) =>
     String(value).replace(
@@ -119,17 +114,19 @@
     drawerOpen: false,
     keeperUnfold: false,
     clues: [],
+    forumBookmarks: [],
+    forumReplies: [],
     ending: null,
     reduced: matchMedia("(prefers-reduced-motion: reduce)").matches,
     notified: [],
     visits: 0,
   });
   let state = fresh();
-  let canSave = true;
   let toastTimer;
   let searchMessage = "";
   let diaryMessage = "";
   let openedFrom;
+  let renderedPosts = new Map();
   const main = $("#main");
   const modal = $("#modal");
 
@@ -137,31 +134,32 @@
     const data = JSON.parse(localStorage.getItem(KEY));
     if (data && data.version === 1) {
       state.view = VIEWS.includes(data.view) ? data.view : "home";
-      state.page = owns(STORY.pages, data.page) ? data.page : "first";
+      state.page = Object.hasOwn(STORY.pages, data.page) ? data.page : "first";
       state.category = typeof data.category === "string" ? data.category : "";
-      state.topic = owns(TOPICS, data.topic) ? data.topic : "";
+      state.topic = Object.hasOwn(TOPICS, data.topic) ? data.topic : "";
       state.phoneTab = ["chat", "photo", "files"].includes(data.phoneTab) ? data.phoneTab : "chat";
       ["unlocked", "transcript", "showHidden", "diaryRestored", "compare", "codexRevealed", "unfolded", "drawerOpen", "keeperUnfold", "reduced"].forEach((key) => {
         if (typeof data[key] === "boolean") state[key] = data[key];
       });
       state.diaryOrder = Array.isArray(data.diaryOrder) ? data.diaryOrder.filter((key, index, items) => ["a", "b", "c", "d"].includes(key) && items.indexOf(key) === index).slice(0, 4) : [];
       state.clues = CLUES.filter((key) => Array.isArray(data.clues) && data.clues.includes(key));
+      state.forumBookmarks = Array.isArray(data.forumBookmarks) ? data.forumBookmarks.filter((item) => item && typeof item.id === "string" && typeof item.author === "string" && typeof item.excerpt === "string").slice(0, 100).map((item) => ({ id: item.id.slice(0, 80), author: item.author.slice(0, 40), floor: String(item.floor || "").slice(0, 40), excerpt: item.excerpt.slice(0, 240) })) : [];
+      state.forumReplies = Array.isArray(data.forumReplies) ? data.forumReplies.filter((item) => item && typeof item.id === "string" && typeof item.rootId === "string" && typeof item.text === "string").slice(0, 100).map((item) => ({ id: item.id.slice(0, 80), rootId: item.rootId.slice(0, 80), replyTo: String(item.replyTo || "楼主").slice(0, 40), text: item.text.slice(0, 500) })) : [];
       state.annotations = ["return", "name"].filter((key) => Array.isArray(data.annotations) && data.annotations.includes(key));
       state.notified = ["work", "mother", "bank", "landlord", "colleague"].filter((key) => Array.isArray(data.notified) && data.notified.includes(key));
       state.visits = typeof data.visits === "number" ? data.visits : 0;
       if (["settled", "extended", "recorded"].includes(data.ending) && state.clues.includes("contract")) state.ending = data.ending;
       if (state.view === "contract" && !state.clues.includes("photo")) state.view = "ledger";
     }
-  } catch {
-    canSave = false;
-  }
+  } catch {}
 
   function icons() {
     if (window.lucide) window.lucide.createIcons({ attrs: { "aria-hidden": "true" } });
   }
   function has(clue) { return state.clues.includes(clue); }
+  function hasForumBookmark(id) { return id === "wish-found-0" ? has("wish") : state.forumBookmarks.some((item) => item.id === id); }
   function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); canSave = true; } catch { canSave = false; }
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
   }
   function toast(message) {
     clearTimeout(toastTimer);
@@ -188,7 +186,7 @@
   function updateChrome() {
     const count = state.clues.length;
     const settled = state.ending === "settled";
-    const visibleCount = settled ? 0 : count;
+    const visibleCount = settled ? 0 : count + state.forumBookmarks.length;
     document.body.classList.toggle("altered", has("ledger"));
     document.body.classList.toggle("settled", state.ending === "settled");
     document.body.classList.toggle("recorded", state.ending === "recorded");
@@ -198,6 +196,7 @@
     const identityEl = $("#identity");
     if (identityEl) identityEl.textContent = state.ending === "settled" ? "家中独女" : has("ledger") && !has("photo") ? "亲属关系待核" : "林舟的姐姐";
     $("#online-count").textContent = `在线：${has("ledger") ? "16" : "17"} 人`;
+    $("#site-notice").textContent = state.ending === "settled" ? "本日愿事已毕。诸位安心歇息，明日照常开帖。" : has("ledger") ? "所愿既应，所欠应还。近亲可以代签，请勿将已交割项目重复申报。" : "巷里有棵老柳树，来去都是有缘人。请文明交流，勿重复许愿。";
     document.querySelectorAll(".board-nav button").forEach((button) => {
       const homeActive = state.view === "home" && !state.category;
       const categoryActive = state.view === "home" && state.category === button.dataset.category;
@@ -206,22 +205,15 @@
     icons();
   }
   function render(scroll = false) {
-    try {
-      updateChrome();
-      const renderer = { home: renderHome, forum: renderForum, topic: renderTopic, phone: renderPhone, diary: renderDiary, gazette: renderGazette, codex: renderCodex, ledger: renderLedger, contract: renderContract, drawer: renderDrawer, keeper: renderKeeper, evidence: renderEvidence, profile: renderProfile }[state.view];
-      if (state.ending && state.view !== "profile") main.innerHTML = renderEnding();
-      else main.innerHTML = (renderer || renderHome)();
-      main.dataset.booted = "true";
-      icons();
-      if (scroll) {
-        const top = main.getBoundingClientRect().top + window.scrollY - 18;
-        window.scrollTo({ top, behavior: "auto" });
-        main.focus({ preventScroll: true });
-      }
-    } catch (error) {
-      console.error("Willow page render failed.", error);
-      main.dataset.booted = "error";
-      main.innerHTML = `<section class="boot-panel boot-error"><h2>论坛内容未能载入</h2><p>浏览记录可能来自旧版本。你可以重新加载，或保留已收集的线索并返回论坛首页。</p><div class="boot-actions"><button class="command secondary" data-action="reload-page">重新加载</button><button class="command" data-action="recover-home">返回论坛首页</button></div></section>`;
+    updateChrome();
+    renderedPosts = new Map();
+    if (state.ending && state.view !== "profile") main.innerHTML = renderEnding();
+    else main.innerHTML = { home: renderHome, forum: renderForum, topic: renderTopic, lostfound: renderLostFound, phone: renderPhone, diary: renderDiary, gazette: renderGazette, codex: renderCodex, ledger: renderLedger, contract: renderContract, drawer: renderDrawer, keeper: renderKeeper, evidence: renderEvidence, profile: renderProfile }[state.view]();
+    icons();
+    if (scroll) {
+      const top = main.getBoundingClientRect().top + window.scrollY - 18;
+      window.scrollTo({ top, behavior: "instant" });
+      main.focus({ preventScroll: true });
     }
   }
   function navigate(view) {
@@ -266,7 +258,7 @@
       { name: topic.author, role: "注册会员", avatar: topic.author.slice(0, 1), floor: "楼主", date: topic.date, body: `<p>${topic.body}</p>${image}` },
       { name: state.topic === "photos" ? "晚来风" : "青河老住户", role: "注册会员", avatar: state.topic === "photos" ? "晚" : "青", floor: "# 2", date: "2026-09-14 22:18", body: `<p>${topic.reply}</p>` },
     ];
-    return `${crumb(`${topic.category} / 主题`)}<div class="thread-heading"><div><h2>${topic.title}</h2><div class="thread-meta">${topic.author}　发表于 ${topic.date}</div></div><div class="thread-stats"><div><b>2</b><small>回帖</small></div><div><b>86</b><small>浏览</small></div></div></div><div class="thread-tools"><button class="command secondary" data-action="category" data-category="${topic.category}">${icon("arrow-left")}返回版块</button></div>${posts.map((post) => renderPost(post)).join("")}<div class="thread-bottom"><span>本主题最后回复于今天 22:18</span><button data-action="home">返回论坛首页</button></div>`;
+    return `${crumb(`${topic.category} / 主题`)}<div class="thread-heading"><div><h2>${topic.title}</h2><div class="thread-meta">${topic.author}　发表于 ${topic.date}</div></div><div class="thread-stats"><div><b>${2 + state.forumReplies.filter((reply) => reply.rootId.startsWith(`topic-${state.topic}-`)).length}</b><small>回帖</small></div><div><b>86</b><small>浏览</small></div></div></div><div class="thread-tools"><button class="command secondary" data-action="category" data-category="${topic.category}">${icon("arrow-left")}返回版块</button></div>${posts.map((post, index) => renderPost(post, `topic-${state.topic}-${index}`)).join("")}<div class="thread-bottom"><span>本主题最后回复于今天 22:18</span><button data-action="home">返回论坛首页</button></div>`;
   }
   const crumb = (text) => `<div class="breadcrumb"><button data-action="home">柳巷论坛</button>${icon("chevron-right")}<span>${text}</span></div>`;
   const heading = (category, title, subtitle) => `${crumb(category)}<div class="view-heading"><span class="eyebrow">${category}</span><h2>${title}</h2><p>${subtitle}</p></div>`;
@@ -274,20 +266,46 @@
     const pages = [["first", "1"], ["old", "173"], ["found", "325"], ["recent", "329"]];
     const pageLabels = { first: "2009 年 · 这张帖子刚开始的时候", old: "2015 年 · 新春还愿", recent: "最近的回帖", found: "2026 年 6 月 · 找到一叶小舟" };
     let posts = STORY.pages[state.page];
+    const replyCount = (3287 + state.forumReplies.filter((reply) => reply.rootId.startsWith("wish-")).length).toLocaleString("en-US");
     return `${crumb("本地民俗 / 愿望柳")}
-      <div class="thread-heading"><div><div class="thread-tags"><span>置顶</span><span>精华</span><span>民间习俗</span></div><h2>【愿望柳】留一句心愿，等一阵好风</h2><div class="thread-meta">守柳人　发表于 2009-04-05　<span>·</span>　最后回复：今天 23:02</div></div><div class="thread-stats"><div><b>3,287</b><small>回帖</small></div><div><b>16.8万</b><small>浏览</small></div></div></div>
+      <div class="thread-heading"><div><div class="thread-tags"><span>置顶</span><span>精华</span><span>民间习俗</span></div><h2>【愿望柳】留一句心愿，等一阵好风</h2><div class="thread-meta">守柳人　发表于 2009-04-05　<span>·</span>　最后回复：今天 23:02</div></div><div class="thread-stats"><div><b>${replyCount}</b><small>回帖</small></div><div><b>16.8万</b><small>浏览</small></div></div></div>
       <div class="thread-tools"><div class="pagination">${pages.map(([key, label], i) => `${i === 1 ? "<span>…</span>" : ""}<button data-action="page" data-page="${key}" class="${state.page === key ? "active" : ""}" aria-label="第 ${label} 页" ${state.page === key ? 'aria-current="page"' : ""}>${label}</button>${i === 1 ? "<span>…</span>" : ""}`).join("")}</div><form class="thread-search" id="search-form"><input aria-label="在本帖中查找" id="search-input" type="search" placeholder="用户名 / 姓名 / 楼层" maxlength="60" autocomplete="off"><button aria-label="搜索帖子" title="搜索帖子">${icon("search")}</button></form></div>
       <div class="result-info" role="status">${searchMessage ? escape(searchMessage) : pageLabels[state.page]}</div>
-      ${posts.map((post) => renderPost(post)).join("")}
+      ${posts.map((post, index) => renderPost(post, `wish-${state.page}-${index}`)).join("")}
       <div class="thread-bottom"><span>${state.page === "recent" && has("contract") && !has("lostFolks") ? "你盯着这些还愿的回帖，突然觉得哪里不对劲。" : state.page === "recent" && has("lostFolks") ? "你已看清：这些人，都少了一块。" : "本帖始于 2009 年，至今仍有乡亲归来。"}</span>${state.page === "recent" && has("contract") && !has("lostFolks") ? '<button class="command" data-action="keep-lost">察觉到了什么，记下来</button>' : state.page !== "recent" ? '<button class="text-button" data-action="page" data-page="recent">查看最新回帖 →</button>' : ""}</div>
-      ${state.page === "found" ? `<div class="block-action"><span></span><button class="command" data-action="keep-wish">${icon(has("wish") ? "smartphone" : "bookmark-plus")}${has("wish") ? "查看林舟留下的手机" : "收藏第 3241 楼"}</button></div>` : ""}
       ${state.page === "found" && has("voice") ? `<div class="block-action"><p>林舟在转写里提到，抽屉最底下有张折起来的红纸。</p><button class="command secondary" data-action="open-drawer">去翻父母的老抽屉</button></div>` : ""}`;
   }
-  function renderPost(post) {
+  function htmlToText(html) {
+    const node = document.createElement("div");
+    node.innerHTML = html;
+    return (node.textContent || "").replace(/\s+/g, " ").trim();
+  }
+  function postActions(meta) {
+    const saved = hasForumBookmark(meta.id);
+    const locked = meta.id === "wish-found-0" && saved;
+    return `<div class="post-actions"><button data-action="reply-post" data-post-id="${escape(meta.id)}">${icon("reply")}回复</button><button data-action="favorite-post" data-post-id="${escape(meta.id)}" class="${saved ? "saved" : ""}" aria-pressed="${saved}" ${locked ? "disabled" : ""}>${icon(saved ? "bookmark-check" : "bookmark")}${saved ? "已收藏" : "收藏"}</button></div>`;
+  }
+  function renderForumReplies(rootId) {
+    const replies = state.forumReplies.filter((reply) => reply.rootId === rootId);
+    if (!replies.length) return "";
+    return `<section class="forum-followups" aria-label="玩家跟帖">${replies.map((reply, index) => {
+      const meta = { id: reply.id, rootId, author: "晚来风", floor: `跟帖 ${index + 1}`, excerpt: reply.text };
+      renderedPosts.set(meta.id, meta);
+      return `<article class="post user-reply" data-post-id="${escape(meta.id)}"><div class="post-author"><span class="avatar me">晚</span><strong>晚来风</strong><small>注册会员</small></div><div class="post-content"><div class="post-meta"><span>回复 ${escape(reply.replyTo)} · 刚刚</span><span>${escape(meta.floor)}</span></div><div class="post-body"><p>${escape(reply.text).replace(/\n/g, "<br>")}</p></div>${postActions(meta)}</div></article>`;
+    }).join("")}</section>`;
+  }
+  function renderPost(post, id) {
     let body = post.body;
     if (has("ledger") && post.name === "巷尾裁缝" && state.page === "recent")
       body = '<p>南边林家那个姑娘回来了。看着气色不错。</p><p>记错了，是她帮我搬的缝纫机。林家哪有什么男孩子。</p><p class="deleted-line">[ 编辑于 23:41 ]</p>';
-    return `<article class="post ${post.tone || ""}"><div class="post-author"><span class="avatar">${post.avatar}</span><strong>${post.name}</strong><small>${post.role}</small>${post.tone === "keeper" ? '<span class="role-tag">版主</span>' : ""}</div><div class="post-content"><div class="post-meta"><span>发表于 ${post.date}</span><span>${post.floor}</span></div><div class="post-body">${body}</div></div></article>`;
+    const meta = { id, rootId: id, author: post.name, floor: post.floor, excerpt: htmlToText(body).slice(0, 240) };
+    renderedPosts.set(id, meta);
+    return `<article class="post ${post.tone || ""}" data-post-id="${escape(id)}"><div class="post-author"><span class="avatar">${post.avatar}</span><strong>${post.name}</strong><small>${post.role}</small>${post.tone === "keeper" ? '<span class="role-tag">版主</span>' : ""}</div><div class="post-content"><div class="post-meta"><span>发表于 ${post.date}</span><span>${post.floor}</span></div><div class="post-body">${body}</div>${postActions(meta)}</div></article>${renderForumReplies(id)}`;
+  }
+  function renderLostFound() {
+    const phoneItem = has("wish") ? `<article class="lost-item featured"><div class="lost-icon">${icon("smartphone")}</div><div><span class="lost-status">待家属确认</span><h3>黑色旧手机</h3><p>磨损保护壳，屏幕仍有电。物品登记显示，它是在林舟房间的枕头下找到的。</p><small>登记时间：2026-09-14 · 暂存：社区服务站</small></div><button class="command" data-action="open-phone">${icon("external-link")}查看林舟的旧手机</button></article>` : "";
+    return `${heading("生活互助 / 失物招领", "本周失物招领", "认领时请说明物品特征；涉及个人设备的物品，仅向有据亲属开放")}
+      <section class="lost-found-list">${phoneItem}<article class="lost-item"><div class="lost-icon">${icon("key-round")}</div><div><span class="lost-status">待认领</span><h3>一串钥匙</h3><p>银色钥匙三把，挂有褪色公交卡套。在文化路北口捡到。</p><small>登记时间：2026-09-14 · 编号 LF-0914-03</small></div></article><article class="lost-item"><div class="lost-icon">${icon("badge")}</div><div><span class="lost-status">待认领</span><h3>学生卡</h3><p>蓝色透明卡套，背面贴有一枚小星星贴纸。在北桥公交站捡到。</p><small>登记时间：2026-09-14 · 编号 LF-0914-07</small></div></article></section>`;
   }
   function renderPhone() {
     const title = heading("个人物品 / 林舟的旧手机", "屏幕还亮着。", "在弟弟的枕头下面找到的。电量一直停在 17%。");
@@ -362,7 +380,6 @@
       witnessText = "旧例的关键一行还没有补全，不能贸然照做。";
     }
     return `${heading("柳下存根 / LX0617", "那张没人读完的红纸。", "近亲身份已核验 · 林晚 · 原件仍封存在柳祠树洞")}
-      <figure class="scene-photo"><img src="assets/contract-hollow.png" alt="老柳树朝河的树洞深处，塞着一个红绳捆扎的红纸包"><figcaption>柳祠树洞 · 原契封存处</figcaption></figure>
       <article class="red-paper"><div class="contract-id">柳下原契 · LX0617</div><h3>愿书</h3><p>立愿人林舟，今自愿以与胞姐林晚所系之因，换其往后安稳、诸事顺遂。</p><p>所愿：<strong>让姐姐林晚过得好。</strong></p><p>所应每进一分，所系即归一分。愿有所应，应有所还。</p>${state.unfolded ? '<div class="fold"></div><p>尚存末项：<strong>姐姐关于弟弟的全部童年记忆。</strong></p><p class="fine-print">立愿人不在，得由近亲代还。代还者书“还愿”二字，即视为收讫。所系结清后，立愿人于受益人之生平不复存续。</p><p class="fine-print">末项未交割前，近亲可具名申请“暂不结清”。原物不返，旧债不减，仅缓末项。此为展期，非赎回。</p><p class="signature">林舟<br><small>二〇二六年六月十七日</small></p>' : '<div class="fold"><button data-action="unfold">纸在这里折过。展开下半页。</button></div>'}</article>
       ${state.unfolded && !has("contract") ? '<div class="contract-controls"><button class="command" data-action="keep-contract">核对落款，留存完整原契</button></div>' : ""}
       ${has("contract") && !coreReady ? `<section class="investigation-gate"><header><span>${icon("list-checks")}</span><div><h3>落字前，还差几页没有读完。</h3><p>原契不会替你解释那些已经结清的人。</p></div></header><ul><li class="${has("lostFolks") ? "done" : ""}">${icon(has("lostFolks") ? "check" : "circle")}愿望柳历年回帖</li><li class="${has("parents") ? "done" : ""}">${icon(has("parents") ? "check" : "circle")}父母抽屉里的旧红纸</li><li class="${has("keeper") ? "done" : ""}">${icon(has("keeper") ? "check" : "circle")}守柳人的第一笔账</li></ul>${nextStep}</section>` : ""}
@@ -371,7 +388,6 @@
   function renderDrawer() {
     const open = state.drawerOpen;
     return `${heading("私人 / 父母的老抽屉", "抽屉最底层，压着半张红纸。", "父亲从不让碰这个抽屉。锁早就坏了，他却一直当它锁着。")}
-      <figure class="scene-photo"><img src="assets/drawer-redpaper.png" alt="拉开的旧木抽屉，最底层压着一张对折的红纸，边缘焦黑"><figcaption>抽屉最底层 · 原物</figcaption></figure>
       <article class="gazette-paper"><div class="volume">旧红纸 · 对折 · 边缘焦黑</div><h3>愿 书（残）</h3><div class="gazette-text"><p>立愿人 <strong>林秀芝</strong>，今自愿以与子 <strong>林舟</strong>、女 <strong>林晚</strong> 所系之因，换其 <strong>好好长大</strong>。</p><p>所愿：<strong>让孩子好好长大。</strong></p><p>所应每进一分，所系即归一分……</p>${open ? '<div class="annotation-note"><strong>纸的下半截被剪掉了。</strong><br>剪口平整，不是撕的。缺掉的那一段，是「还愿」的落款。<br><br>纸背有一行极淡的铅笔字：<em>「孩子顺顺当当长大，比什么都强。我签。」</em></div><p class="fine-print">——这是母亲的字。她签过。父亲，代她还过。</p>' : '<div class="fold"><button class="text-button" data-action="unfold-paper">纸折在这里。小心展开。</button></div>'}</div><div class="page-number">约 1998 年 · 柳巷林家</div></article>
       ${open ? `<div class="block-action"><p>${has("parents") ? "他们早就签过字。这就是为什么，他们对弟弟失踪，淡得反常。" : "这不是林舟一个人的契约。这是一家三口，都欠过柳娘娘。"}</p><button class="command" data-action="keep-parents" ${has("parents") ? "disabled" : ""}>${icon(has("parents") ? "check" : "notebook-pen")}${has("parents") ? "已留存" : "留存这张红纸"}</button></div>` : ""}`;
   }
@@ -406,7 +422,7 @@
           <div><dt>用户组</dt><dd>新注册会员</dd></div>
           <div><dt>注册时间</dt><dd>2026-09-14</dd></div>
           <div><dt>最后登录</dt><dd>${state.ending ? "2026-09-15" : "2026-09-14"} 23:5${state.ending ? "9" : "6"}</dd></div>
-          <div><dt>发帖数</dt><dd>${settled ? "1" : "2"}</dd></div>
+          <div><dt>发帖数</dt><dd>${(settled ? 2 : 1) + state.forumReplies.length}</dd></div>
           <div><dt>收藏主题</dt><dd>${collected}</dd></div>
           <div><dt>个性签名</dt><dd id="identity">${identity}</dd></div>
         </dl>
@@ -418,12 +434,7 @@
   }
   function renderEnding() {
     const ending = STORY.endings[state.ending];
-    const photo = {
-      settled: ["photo-alone.jpg", "更新后的照片：石栏前只剩林晚一个人", "IMG_20140823_02.jpg · 2.31 MB · 2014/08/23"],
-      extended: ["photo-both.jpg", "旧缓存里的照片：姐弟俩和蓝色纸风车", "IMG_20140823_02.jpg · 本机缓存 · 未同步"],
-    }[state.ending];
-    const photoHtml = photo ? `<figure class="ending-photo"><img src="assets/${photo[0]}" alt="${photo[1]}"><figcaption>${photo[2]}</figcaption></figure>` : "";
-    return `${crumb("愿事登记 / " + ending.mark)}<article class="ending"><span class="ending-eyebrow">LX0617　/　${ending.mark}</span><h2>${ending.name}</h2><p class="ending-lead">${ending.lead}</p><div class="ending-prose">${ending.paragraphs.map((text) => `<p>${text}</p>`).join("")}</div>${photoHtml}<div class="ending-receipt">${ending.final}</div><div class="ending-buttons"><button class="command secondary" data-action="replay">${icon("undo-2")}返回落款页</button><button class="command secondary" data-action="restart">${icon("rotate-ccw")}清除浏览记录</button></div></article>`;
+    return `${crumb("愿事登记 / " + ending.mark)}<article class="ending"><span class="ending-eyebrow">LX0617　/　${ending.mark}</span><h2>${ending.name}</h2><p class="ending-lead">${ending.lead}</p><div class="ending-prose">${ending.paragraphs.map((text) => `<p>${text}</p>`).join("")}</div><div class="ending-receipt">${ending.final}</div><div class="ending-buttons"><button class="command secondary" data-action="replay">${icon("undo-2")}返回落款页</button><button class="command secondary" data-action="restart">${icon("rotate-ccw")}清除浏览记录</button></div></article>`;
   }
   function showModal(label, title, content) {
     if (!modal.open) openedFrom = document.activeElement;
@@ -437,10 +448,33 @@
     modal.close();
     if (openedFrom?.isConnected) openedFrom.focus({ preventScroll: true });
   }
-  function notebook() {
+  function openReply(postId) {
+    const meta = renderedPosts.get(postId);
+    if (!meta) { toast("这条帖子暂时无法回复。"); return; }
+    showModal("发表回复", `回复 ${meta.author}`, `<form id="reply-form" class="reply-form" data-post-id="${escape(postId)}"><p class="reply-reference">${escape(meta.floor)} · ${escape(meta.excerpt.slice(0, 90))}</p><label for="reply-text">回复内容</label><textarea id="reply-text" maxlength="500" rows="5" required placeholder="写下你的回复"></textarea><p class="inline-error" id="reply-error" role="status"></p><div class="modal-actions"><button class="command">${icon("send")}发表回复</button><button class="command secondary" type="button" data-action="close-modal">取消</button></div></form>`);
+  }
+  function toggleForumBookmark(postId) {
+    if (postId === "wish-found-0") {
+      if (has("wish")) return;
+      collect("wish"); save(); render(); toast("已收藏第 3241 楼。旧手机现已登记在失物招领处。"); return;
+    }
+    const existing = state.forumBookmarks.findIndex((item) => item.id === postId);
+    if (existing >= 0) {
+      state.forumBookmarks.splice(existing, 1);
+      save(); render(); toast("已取消收藏这条帖子。"); return;
+    }
+    const meta = renderedPosts.get(postId);
+    if (!meta) { toast("这条帖子暂时无法收藏。"); return; }
+    state.forumBookmarks.push({ id: meta.id, author: meta.author, floor: meta.floor, excerpt: meta.excerpt });
+    save(); render(); toast(`已收藏 ${meta.author} 的帖子。`);
+  }
+  function notebook(clue) {
     if (state.ending === "settled") { showModal("我的收藏", "收藏夹为空", "<p>暂无已收藏内容。</p>"); return; }
-    const keys = CLUES.filter(has);
-    showModal("我的收藏", `已收藏 ${state.clues.length} 项`, keys.length ? keys.map((key) => `<section class="notebook-clue"><h3>${STORY.clues[key].title}</h3><p>${STORY.clues[key].text}</p><small>${STORY.clues[key].source}</small></section>`).join("") : "<p>暂无已收藏内容。</p>");
+    const keys = clue && has(clue) ? [clue] : CLUES.filter(has);
+    const clueItems = keys.map((key) => `<section class="notebook-clue"><h3>${STORY.clues[key].title}</h3><p>${STORY.clues[key].text}</p><small>${STORY.clues[key].source}</small></section>`).join("");
+    const forumItems = clue ? "" : state.forumBookmarks.map((item) => `<section class="notebook-clue forum-bookmark"><h3>${escape(item.author)} · ${escape(item.floor)}</h3><p>${escape(item.excerpt)}</p><small>柳巷论坛 / 帖子收藏</small></section>`).join("");
+    const total = clue ? keys.length : state.clues.length + state.forumBookmarks.length;
+    showModal("我的收藏", clue ? STORY.clues[clue].title : `已收藏 ${total} 项`, clueItems || forumItems ? clueItems + forumItems : "<p>暂无已收藏内容。</p>");
   }
   function choose(ending) {
     if (!has("contract")) return;
@@ -483,14 +517,16 @@
       case "profile": state.view = "profile"; state.category = ""; state.topic = ""; save(); render(true); break;
       case "close-modal": closeModal(); break;
       case "dismiss-notification": $("#notification").hidden = true; break;
-      case "reload-page": window.location.reload(); break;
-      case "recover-home":
-        state.view = "home"; state.category = ""; state.topic = ""; state.ending = null; save(); render(); break;
+      case "clue": notebook(target.dataset.clue); break;
+      case "reply-post": openReply(target.dataset.postId); break;
+      case "favorite-post": toggleForumBookmark(target.dataset.postId); break;
       case "page": state.page = target.dataset.page; searchMessage = ""; save(); render(); break;
       case "keep-wish":
-        if (has("wish")) navigate("phone");
-        else { collect("wish"); render(); }
+        if (!has("wish")) { collect("wish"); render(); toast("已收藏第 3241 楼。旧手机现已登记在失物招领处。"); }
         break;
+      case "open-phone":
+        if (!has("wish")) { toast("暂时没有可供你认领的手机。"); break; }
+        navigate("phone"); break;
       case "phone-tab": state.phoneTab = target.dataset.tab; save(); render(); break;
       case "transcript": state.transcript = !state.transcript; save(); render(); break;
       case "toggle-hidden": state.showHidden = !state.showHidden; save(); render(); break;
@@ -572,6 +608,9 @@
     if (form.id === "site-search-form") {
       const query = $("#site-search").value.trim();
       if (!query) { $("#site-search").focus(); return; }
+      if (/林晚|晚来风/i.test(query)) {
+        state.topic = "photos"; state.view = "topic"; state.category = ""; save(); render(true); return;
+      }
       if (/愿望柳|许愿|还愿|柳娘娘|林舟|一叶小舟|LX0617|林秀芝|守柳人/i.test(query)) {
         state.view = "forum"; state.category = ""; state.topic = "wish";
         if (/林舟|一叶小舟|LX0617/i.test(query)) { state.page = "found"; searchMessage = "找到 1 条相关留言，以及相邻的版主回复。"; }
@@ -582,10 +621,19 @@
       if (match) { state.topic = match[0]; state.view = "topic"; state.category = ""; save(); render(true); return; }
       toast(`没有找到“${query}”的相关主题。`); return;
     }
+    if (form.id === "reply-form") {
+      const targetId = form.dataset.postId;
+      const meta = renderedPosts.get(targetId);
+      const text = $("#reply-text").value.trim();
+      if (!meta) { $("#reply-error").textContent = "原帖已经离开当前页面，请关闭窗口后重试。"; return; }
+      if (!text) { $("#reply-error").textContent = "回复内容不能为空。"; return; }
+      state.forumReplies.push({ id: `reply-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, rootId: meta.rootId || meta.id, replyTo: meta.author, text: text.slice(0, 500) });
+      save(); closeModal(); render(); toast("回复已发表。"); return;
+    }
     if (form.id === "search-form") {
       const query = $("#search-input").value.trim();
       if (!query) { searchMessage = "请输入用户名、姓名或楼层。"; render(); $("#search-input").focus(); return; }
-      if (/林舟|一叶小舟|3241|3242|LX0617/i.test(query)) { state.page = "found"; searchMessage = "找到 1 条相关留言，以及相邻的版主回复。"; }
+      if (/林舟|林晚|一叶小舟|3241|3242|LX0617/i.test(query)) { state.page = "found"; searchMessage = "找到 1 条相关留言，以及相邻的版主回复。"; }
       else if (/守柳人|3287|到期|林秀芝/i.test(query)) { state.page = "recent"; searchMessage = "已定位到最近的版主回帖。"; }
       else if (/守灯等雨|1721|2015/i.test(query)) { state.page = "old"; searchMessage = "已定位到 2015 年的还愿记录。"; }
       else searchMessage = `没有找到“${query}”的相关回帖。`;

@@ -34,7 +34,8 @@ body.settled {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
   letter-spacing: 0;
 }
@@ -45,7 +46,8 @@ button {
 
 button:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible {
   outline: 2px solid #f09a3e;
   outline-offset: 1px;
 }
@@ -266,6 +268,33 @@ select:focus-visible {
   background: #164f7c;
 }
 
+.notice-line {
+  min-height: 32px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #d8e1e7;
+  border-top: 0;
+  background: #fffdf1;
+  color: #687680;
+  font-size: 11px;
+}
+
+.notice-line b {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  background: var(--forum-orange);
+  color: #fff;
+  font-weight: 400;
+}
+
+.notice-line p {
+  margin: 0;
+  padding: 5px 0;
+  line-height: 1.6;
+}
+
 .global-search {
   min-height: 43px;
   padding: 6px 10px;
@@ -334,36 +363,6 @@ select:focus-visible {
 main {
   min-width: 0;
   outline: 0;
-}
-
-.boot-panel {
-  min-height: 220px;
-  padding: 34px 28px;
-  border: 1px solid var(--forum-line);
-  background: #f8fafb;
-  color: #53606a;
-}
-
-.boot-panel h2 {
-  margin: 0 0 12px;
-  color: #215f8f;
-  font-size: 18px;
-}
-
-.boot-panel p {
-  margin: 0 0 18px;
-  line-height: 1.8;
-}
-
-.boot-panel .boot-warning {
-  margin-top: 18px;
-  color: #9a3e35;
-}
-
-.boot-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 .sidebar {
@@ -1020,6 +1019,119 @@ main {
   line-height: 1.9;
 }
 
+.post-actions {
+  min-height: 30px;
+  margin-top: 12px;
+  padding-top: 7px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px dotted #d7dfe5;
+}
+
+.post-actions button {
+  min-height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: #47738f;
+  font-size: 10px;
+}
+
+.post-actions button.saved {
+  color: #bd5b24;
+}
+
+.post-actions button:disabled {
+  cursor: default;
+  opacity: .72;
+}
+
+.post-actions svg {
+  width: 13px;
+  height: 13px;
+}
+
+.forum-followups {
+  margin: 6px 0 8px 28px;
+  padding-left: 8px;
+  border-left: 3px solid #d7e3eb;
+}
+
+.forum-followups .post {
+  min-height: 112px;
+  margin-top: 6px;
+  border-top: 1px solid var(--forum-line);
+}
+
+.user-reply .post-author {
+  background: #f4f7f9;
+}
+
+.lost-found-list {
+  margin-top: 10px;
+  border-top: 1px solid var(--forum-line);
+}
+
+.lost-item {
+  min-height: 104px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--forum-line);
+  border-top: 0;
+  background: #fff;
+}
+
+.lost-item.featured {
+  background: #fffdf2;
+}
+
+.lost-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #b9cedd;
+  background: #edf5fa;
+  color: #2b6996;
+}
+
+.lost-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.lost-item h3,
+.lost-item p {
+  margin: 0;
+}
+
+.lost-item h3 {
+  margin: 2px 0 5px;
+  color: #2d648a;
+  font-size: 14px;
+}
+
+.lost-item p {
+  line-height: 1.7;
+}
+
+.lost-item small,
+.lost-status {
+  color: #89959e;
+  font-size: 9px;
+}
+
+.lost-status {
+  color: #b65d29;
+}
+
 .thread-photo {
   display: block;
   width: 100%;
@@ -1234,6 +1346,44 @@ dialog::backdrop {
 
 .notebook-clue small {
   color: #8a969e;
+}
+
+.forum-bookmark {
+  border-left: 2px solid #8aa8bd;
+  padding-left: 10px;
+}
+
+.reply-form label,
+.reply-form textarea {
+  width: 100%;
+  display: block;
+}
+
+.reply-form label {
+  margin: 12px 0 6px;
+  color: #4f687a;
+}
+
+.reply-form textarea {
+  min-height: 112px;
+  padding: 9px;
+  resize: vertical;
+  border: 1px solid #b9c9d5;
+  border-radius: 2px;
+  color: #333;
+}
+
+.reply-reference {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 2px solid #84a3b8;
+  background: #f2f6f8;
+  color: #71818d;
+  line-height: 1.7;
+}
+
+.reply-form .modal-actions {
+  margin-top: 12px;
 }
 
 .modal-actions,
@@ -1545,6 +1695,18 @@ dialog::backdrop {
     padding: 0 11px 11px;
   }
 
+  .forum-followups {
+    margin-left: 8px;
+  }
+
+  .lost-item {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .lost-item > .command {
+    grid-column: 1 / -1;
+  }
+
   .block-action,
   .ledger-after,
   .choice-row {
@@ -1579,6 +1741,12 @@ dialog::backdrop {
 
   .utility-inner {
     justify-content: space-between;
+  }
+
+  .notice-line {
+    align-items: flex-start;
+    padding-top: 6px;
+    padding-bottom: 6px;
   }
 
   .global-search label {
